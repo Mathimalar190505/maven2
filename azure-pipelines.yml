@@ -2,20 +2,68 @@
 # Build your Java project and run tests with Apache Maven.
 # Add steps that analyze code, save build artifacts, deploy, and more:
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
-
 trigger:
-- main
+  - master
 
-pool: maven2
+pool: mylocalpool
 
 steps:
+# =========================================================
+# Step 1: Verify Maven and Java Environment
+# =========================================================
+- script: |
+    echo "===== VERIFY MAVEN AND JAVA ====="
+    set MAVEN_HOME=C:\dev\apache-maven-3.9.11-bin\apache-maven-3.9.11
+    set PATH=%MAVEN_HOME%\bin;%PATH%
+    echo Current PATH:
+    echo %PATH%
+    echo "Checking mvn version:"
+    where mvn
+    mvn -version
+    echo "Checking java version:"
+    java -version
+  displayName: 'Verify Maven & Java Installation'
+
+# =========================================================
+# Step 2: Build and Test with Maven
+# =========================================================
 - task: Maven@3
+  displayName: 'Maven Build and Test'
   inputs:
     mavenPomFile: 'pom.xml'
+    mavenDirectory: 'C:\dev\apache-maven-3.9.11-bin\apache-maven-3.9.11'  # 👈 Explicit Maven directory
+    goals: 'clean package'
     mavenOptions: '-Xmx3072m'
     javaHomeOption: 'JDKVersion'
-    jdkVersionOption: '1.11'
+    jdkVersionOption: '1.8'
     jdkArchitectureOption: 'x64'
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
-    goals: 'package'
+
+# =========================================================
+# Step 3: Publish Build Artifacts
+# =========================================================
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Build Artifacts'
+  inputs:
+    PathtoPublish: '$(System.DefaultWorkingDirectory)/target'
+    ArtifactName: 'my-java-artifacts'
+    publishLocation: 'Container'
+
+# =========================================================
+# Step 4: Publish Test Results
+# =========================================================
+- task: PublishTestResults@2
+  displayName: 'Publish Test Results'
+  inputs:
+    testResultsFormat: 'JUnit'
+    testResultsFiles: '**/surefire-reports/TEST-*.xml'
+    failTaskOnFailedTests: true
+
+# =========================================================
+# Step 5: Completion Message
+# =========================================================
+- script: |
+    echo "Maven Build, Test, and Publish completed successfully!"
+  displayName: 'Completion Message'
+
